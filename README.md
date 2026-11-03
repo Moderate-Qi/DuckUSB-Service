@@ -52,10 +52,10 @@
 
 ## 配套项目
 
-- [PIF 日期管理增强版](https://github.com/Moderate-Qi/PlayIntegrityFix)
-- [TS-OSS 199 兼容增强版](https://github.com/Moderate-Qi/TrickyStoreOSS)
+- [PIF 日期管理增强版](https://github.com/Moderate-Qi/PlayIntegrityFix-Dates)
+- [TS-OSS 199 兼容增强版](https://github.com/Moderate-Qi/TrickyStoreOSS-Compat)
 - [HMA-OSS UID 一体化增强版](https://github.com/Moderate-Qi/HMA-OSS-UID)
-- [TrickyAddon 目标管理增强版](https://github.com/Moderate-Qi/TrickyAddon)
+- [TrickyAddon 目标管理增强版](https://github.com/Moderate-Qi/TrickyAddon-Targets)
 
 ## 免责声明
 
