@@ -2,7 +2,7 @@
 
 在 DuckUSB 原有功能基础上，加入服务侧 Socket 管理和 USB 属性配套处理。在保持日常 USB 调试功能的同时，进一步完善 ADB 隐藏效果。
 
-基于版本：**2.1.7，ARM64 APK。增强维护：[Moderate-Qi](https://github.com/Moderate-Qi)。
+基于版本：**2.1.7**，ARM64 APK。增强维护：[Moderate-Qi](https://github.com/Moderate-Qi)。
 
 ## 相比原版增加
 
