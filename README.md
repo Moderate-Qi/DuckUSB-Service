@@ -2,7 +2,7 @@
 
 在 DuckUSB 原有功能基础上，加入服务侧 Socket 管理和 USB 属性配套处理。在保持日常 USB 调试功能的同时，进一步完善 ADB 隐藏效果。
 
-基于版本：**2.1.7-service.2**，ARM64 APK。增强维护：[Moderate-Qi](https://github.com/Moderate-Qi)。
+基于版本：**2.1.7，ARM64 APK。增强维护：[Moderate-Qi](https://github.com/Moderate-Qi)。
 
 ## 相比原版增加
 
@@ -22,12 +22,6 @@
 4. 查看状态区域：属性显示 `ACTIVE HAL`，Socket helper 显示 `ACTIVE`。
 5. 更换模块或调整 Socket 功能时，先关闭服务侧开关，等待状态显示 `STOPPED`，再进行后续操作。
 
-## 实测记录
-
-本人组合环境中，Duck Detector 1103 显示 20 Ready、0 Danger、0 Warning，Risk Detector 1.6 显示“本地检测已通过”。日常保留电脑端 `adb pull` / `adb push` 文件传输，以及 MT 管理器 Root 终端与日志导出使用方式。
-
-下方配图包括服务设置、检测结果，以及 Native Test ++ Mean Minotaur 32 的界面记录。
-
 ## 实测环境
 
 小米 14 Ultra，HyperOS 3.0.5.0，Android 16，SukiSU Ultra v4.3.0 / 41131-6（LKM），Zygisk Next 1.5.2（864），LSPosed 2.2.1（7912）。系统原始安全补丁日期为 2025-11-01。
@@ -46,15 +40,15 @@
 
 <a href="docs/screenshots/riskdetector-16.jpg"><img src="docs/screenshots/riskdetector-16.jpg" alt="Risk Detector 1.6：本地检测已通过" width="360"></a>
 
-### Native Test ++ Mean Minotaur（牛头） 32：正常
+### Native Test ++ Mean Minotaur（牛头）32：正常
 
-<a href="docs/screenshots/native-test-32.jpg"><img src="docs/screenshots/native-test-32.jpg" alt="Native Test ++ Mean Minotaur 32：界面记录" width="360"></a>
+<a href="docs/screenshots/native-test-32.jpg"><img src="docs/screenshots/native-test-32.jpg" alt="Native Test ++ Mean Minotaur（牛头）32：正常" width="360"></a>
 
 ## 来源、版权与许可证
 
 上游项目：[DuckUSB / bf31eb6；Bouteillepleine 及原项目贡献者](https://github.com/Bouteillepleine/DuckUSB)。功能增强、集成和文档由 Moderate-Qi 维护，保留原作者署名与第三方版权记录。
 
-独立新增文件采用 [GPL-3.0-only](LICENSE-LOCAL.md)，原项目代码版权归原作者；文件范围与来源见 [NOTICE.md](NOTICE.md)。具体修改、来源和构建入口见 [CHANGELOG_LOCAL.md](CHANGELOG_LOCAL.md)、[NOTICE.md](NOTICE.md) 和 [BUILDING.md](BUILDING.md)。
+独立新增文件采用 [GPL-3.0-only](LICENSE-LOCAL.md)，原项目代码版权归原作者。修改记录、文件授权范围和构建方式见 [CHANGELOG_LOCAL.md](CHANGELOG_LOCAL.md)、[NOTICE.md](NOTICE.md) 和 [BUILDING.md](BUILDING.md)。
 
 ## 配套项目
 
@@ -65,6 +59,6 @@
 
 ## 免责声明
 
-如有侵权请联系我删除
+如有侵权请联系我删除。
 
-仅代表本人使用的当前系统和当前环境下的实测结果，且通过相关检测器不代表所有软件都检测不到环境异常，请勿用于游戏作弊等场景
+仅代表本人使用的当前系统和当前环境下的实测结果，且通过相关检测器不代表所有软件都检测不到环境异常，请勿用于游戏作弊等场景。

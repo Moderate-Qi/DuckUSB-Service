@@ -1,6 +1,6 @@
 # DuckUSB Service · USB 属性使用说明
 
-基于版本：**2.1.7-service.2**，ARM64 APK，包名 `com.strawing.duckusb.servicehide`。增强维护：[Moderate-Qi](https://github.com/Moderate-Qi)。
+基于版本：**2.1.7**，包名 `com.strawing.duckusb.servicehide`。增强维护：[Moderate-Qi](https://github.com/Moderate-Qi)。
 
 ## 功能
 
@@ -16,11 +16,11 @@
 3. 等待配置同步，在 Diagnostics 查看 `property helper` 状态。
 4. LSPosed 选择“系统框架”，Socket 开关按日常设置使用。
 
-| 状态 | 含义 |
-| --- | --- |
-| `ACTIVE HAL` | 高通 Gadget HAL 属性处理运行中 |
-| `WAITING HAL SETTLE` | 等待 USB 配置交接与稳定 |
-| `ACTIVE BASE (HAL route unavailable)` | 原有三项属性处理运行中 |
+| 状态                                    | 含义                    |
+| ------------------------------------- | --------------------- |
+| `ACTIVE HAL`                          | 高通 Gadget HAL 属性处理运行中 |
+| `WAITING HAL SETTLE`                  | 等待 USB 配置交接与稳定        |
+| `ACTIVE BASE (HAL route unavailable)` | 原有三项属性处理运行中           |
 
 开机完成约 30 秒后恢复已启用的属性服务，再按 USB 配置状态完成同步。
 
@@ -49,8 +49,4 @@ sh /data/adb/duckusb-properties/restore.sh
 
 Socket 功能通过独立开关或 `/data/adb/duckusb-service/restore.sh` 管理。
 
-## 实测记录
-
-Risk Detector 1.6 显示“本地检测已通过”。电脑端 `adb push` / `adb pull`、shell、logcat 与 MT 管理器日志导出继续使用。
-
-完整截图见 [README.md](README.md)，Socket 设置见 [README_SERVICE_CN.md](README_SERVICE_CN.md)，构建方式见 [BUILDING.md](BUILDING.md)。
+# 

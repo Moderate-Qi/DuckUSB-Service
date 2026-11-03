@@ -1,7 +1,13 @@
-# 来源与版权记录
+# 来源与版权
 
-基础项目为 Bouteillepleine/DuckUSB，基准提交 bf31eb6db00f1dee92f3e51202fa9bc4e75765e4。保留原作者与 Git 历史。
+| 项目     | 来源与授权                                                                                                                            |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| 上游代码   | [Bouteillepleine/DuckUSB](https://github.com/Bouteillepleine/DuckUSB)，基准提交 `bf31eb6db00f1dee92f3e51202fa9bc4e75765e4`，版权归原作者与贡献者 |
+| 独立新增文件 | Moderate-Qi，GPL-3.0-only，许可证全文见 [LICENSE-LOCAL.md](LICENSE-LOCAL.md)                                                             |
+| 第三方组件  | LSPosed API、LSPlant、Dobby 等组件沿用各自许可证和版权记录                                                                                        |
 
-本地独立新增文件包括 service-helper.c、property-helper.c、build-service-helper.py、ServiceAuthState.kt、ServiceSocketTools.kt 及本地新增文档。由 Moderate-Qi 对上述新增部分采用 GPL-3.0-only。
+独立新增文件包括 `service-helper.c`、`property-helper.c`、`build-service-helper.py`、`ServiceAuthState.kt`、`ServiceSocketTools.kt` 及增强版文档。
 
-仓库保留上游涉及 LSPosed API、LSPlant、Dobby 等组件的来源与原许可证。当前 Service APK 构建使用 app、ui、common 模块。
+GPL-3.0-only 授权范围为上述独立新增文件。
+
+Service APK 使用 app、ui、common 模块。签名私钥保存在本地，功能修改见 [CHANGELOG_LOCAL.md](CHANGELOG_LOCAL.md)，构建方式见 [BUILDING.md](BUILDING.md)。

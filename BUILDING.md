@@ -1,8 +1,12 @@
 # 构建与发行
 
-基准提交及本地版本见 `publication/UPSTREAM.json`。签名材料通过本机 `local.properties`、`key.properties` 或环境变量提供，正式发行使用本地保存的原签名。
+基准提交与增强版本见 `publication/UPSTREAM.json`。以下命令在仓库根目录运行；Windows 使用 `gradlew.bat`，Linux/macOS 使用 `./gradlew`。
 
-源码首次获取后执行 `git submodule update --init --recursive`，继承 `.gitmodules` 记录的准确版本。JDK、SDK、NDK 和 Node 依赖以本项目配置及锁文件为准。下面命令在仓库根目录运行；Windows 使用 `gradlew.bat`，Linux/macOS 使用 `./gradlew`。
+获取子模块：
+
+```sh
+git submodule update --init --recursive
+```
 
 ## DuckUSB Service 2.1.7-service.2
 

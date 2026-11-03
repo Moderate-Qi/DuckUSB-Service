@@ -1,6 +1,6 @@
 # DuckUSB Service · Socket 使用说明
 
-基于版本：**2.1.7-service.2**。增强维护：[Moderate-Qi](https://github.com/Moderate-Qi)。
+基于版本：**2.1.7**。增强维护：[Moderate-Qi](https://github.com/Moderate-Qi)。
 
 ## 功能
 
@@ -31,8 +31,4 @@ sh /data/adb/duckusb-service/restore.sh
 
 恢复脚本在首次开启服务时生成，用于恢复授权 Socket 路径与 JDWP 监听。
 
-## 实测记录
-
-Duck Detector 1103 显示 20 Ready、0 Danger、0 Warning。电脑端 `adb push` / `adb pull`、shell、logcat 和 MT 管理器日志导出按日常方式使用。
-
-完整截图与实测环境见 [README.md](README.md)，USB 属性设置见 [README_SERVICE2_CN.md](README_SERVICE2_CN.md)，源码构建见 [BUILDING.md](BUILDING.md)。
+# 
