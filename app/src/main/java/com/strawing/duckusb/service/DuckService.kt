@@ -108,6 +108,7 @@ class DuckService(private val context: Context) : IDuckService.Stub() {
         enforceCaller()
         return Bundle().apply {
             putInt("version", VERSION)
+            putBoolean("authRedirectReady", com.strawing.duckusb.ServiceAuthState.installed)
             putInt("hookCount", hookCount)
             putLong("installedAtRealtimeMs", installedAtRealtimeMs)
             putLong("nowRealtimeMs", SystemClock.elapsedRealtime())

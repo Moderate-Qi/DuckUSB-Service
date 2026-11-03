@@ -1,5 +1,7 @@
 package com.strawing.duckusb
 
+import android.content.Context
+import java.io.File
 import com.topjohnwu.superuser.Shell
 
 object RootTools {
@@ -10,10 +12,11 @@ object RootTools {
     const val ADBD_PROP = "init.svc.adbd"
     const val ADBD_SAFE = "stopped"
 
-    // sys.usb.config stays out of this: init's "on property:sys.usb.config=*" rules act on it
-    // and reconfigure the gadget. sys.usb.state has no init consumer, and masking it keeps the
-    // three readable values consistent, because a half-masked set is its own tell.
-    private const val BASE_MASK = "$USB_PROP=$USB_SAFE $ADBD_PROP=$ADBD_SAFE sys.usb.state=mtp"
+    private const val BASE = "/data/adb/duckusb-properties"
+    private const val BINARY = "$BASE/property-helper-v2"
+    private const val SCRIPT_VERSION = "DuckUSB property service.2"
+
+    private fun quote(value: String) = "'" + value.replace("'", "'\\''") + "'"
 
     init {
         Shell.enableVerboseLogging = false
@@ -43,7 +46,7 @@ object RootTools {
 
     fun snapshot(settingKeys: List<String>, propKeys: List<String>): Snapshot {
         val script = buildString {
-            append("[ -f $BOOT_SCRIPT ] && echo 'mask=1' || echo 'mask=0'\n")
+            append("if [ -f $BASE/enabled ]; then echo mask=\$(cat $BASE/enabled); elif [ -f $BOOT_SCRIPT ]; then echo mask=1; else echo mask=0; fi\n")
             append("echo '#settings'\n")
             append("PATTERN='^(")
             append(settingKeys.joinToString("|"))
@@ -77,89 +80,121 @@ object RootTools {
         return Snapshot(rooted, settings, props, masked)
     }
 
-    /**
-     * Values are changed in the property area only, never in
-     * /data/property/persistent_properties: init seeds sys.usb.config from the persisted
-     * value at boot, so writing mtp to disk would bring USB up with no adb interface.
-     *
-     * -n is load-bearing for init.svc.adbd too. Going through property_service would fire
-     * init's "on property:init.svc.adbd=stopped" rule, which clears sys.usb.ffs.ready and
-     * takes the USB gadget down entirely.
-     *
-     * The script re-applies for the life of the boot rather than a fixed number of passes,
-     * because init rewrites init.svc.* whenever the service changes state.
-     */
-    fun setPropMask(enabled: Boolean): Boolean {
-        if (!enabled) {
-            return exec("rm -f $BOOT_SCRIPT").isSuccess
-        }
-        val masked = BASE_MASK
-        val script = """
-            mkdir -p /data/adb/service.d
-            cat > $BOOT_SCRIPT <<'DUCKUSB_BOOT'
-            #!/system/bin/sh
-            until [ "${'$'}(getprop sys.boot_completed)" = "1" ]; do sleep 1; done
-            sleep 30
-            RP=
-            for candidate in /data/adb/ksu/bin/resetprop /data/adb/ap/bin/resetprop /data/adb/magisk/resetprop; do
-                [ -x "${'$'}candidate" ] && RP="${'$'}candidate" && break
-            done
-            [ -z "${'$'}RP" ] && RP=${'$'}(command -v resetprop 2>/dev/null)
-            [ -z "${'$'}RP" ] && exit 0
-            while true; do
-                for pair in $masked; do
-                    key=${'$'}{pair%%=*}
-                    want=${'$'}{pair#*=}
-                    [ "${'$'}(getprop ${'$'}key)" = "${'$'}want" ] || "${'$'}RP" -n "${'$'}key" "${'$'}want"
-                done
-                sleep 60
-            done
-            DUCKUSB_BOOT
-            chmod 0755 $BOOT_SCRIPT
-        """.trimIndent()
-        val written = exec(script).isSuccess
-        applyNow()
-        return written
+    /** Upgrade the existing property installation when this APK is opened. */
+    @Synchronized
+    fun upgradePropMask(context: Context): Boolean {
+        val result = exec("""
+            [ -f $BOOT_SCRIPT ] || exit 0
+            [ -f $BASE/enabled ] && [ "${'$'}(cat $BASE/enabled)" != "1" ] && exit 0
+            grep -q '$SCRIPT_VERSION' $BOOT_SCRIPT && [ -x $BINARY ] && exit 0
+            echo upgrade
+        """.trimIndent())
+        return if (result.out.any { it.trim() == "upgrade" }) setPropMask(context, true) else result.isSuccess
     }
 
-    fun applyNow(): Boolean {
-        val masked = BASE_MASK
-        val script = """
-            RP=
-            for candidate in /data/adb/ksu/bin/resetprop /data/adb/ap/bin/resetprop /data/adb/magisk/resetprop; do
-                [ -x "${'$'}candidate" ] && RP="${'$'}candidate" && break
-            done
-            [ -z "${'$'}RP" ] && RP=${'$'}(command -v resetprop 2>/dev/null)
-            [ -z "${'$'}RP" ] && exit 1
-            for pair in $masked; do
-                key=${'$'}{pair%%=*}
-                want=${'$'}{pair#*=}
-                "${'$'}RP" -n "${'$'}key" "${'$'}want"
-            done
-        """.trimIndent()
-        return exec(script).isSuccess
-    }
+    fun propStatus(): String = exec("cat $BASE/status 2>/dev/null").out.joinToString(" ").ifBlank { "尚待启用" }
 
-    /**
-     * Only ever undoes our own change: the mask is memory-only, so the persisted value is
-     * still the truth and a reboot would restore it anyway. sys.usb.* is put back from
-     * sys.usb.state's real source, the bound gadget's own function list.
-     */
-    fun restoreProp(): Boolean = exec(
-        """
+    private val locateResetprop = """
         RP=
         for candidate in /data/adb/ksu/bin/resetprop /data/adb/ap/bin/resetprop /data/adb/magisk/resetprop; do
             [ -x "${'$'}candidate" ] && RP="${'$'}candidate" && break
         done
-        [ -z "${'$'}RP" ] && exit 1
-        [ "${'$'}(getprop $USB_PROP)" = "$USB_SAFE" ] && "${'$'}RP" -n $USB_PROP adb
-        [ "${'$'}(getprop $ADBD_PROP)" = "$ADBD_SAFE" ] && "${'$'}RP" -n $ADBD_PROP running
-        TRUE_CFG=${'$'}(cat /sys/class/android_usb/android0/functions 2>/dev/null)
-        [ -z "${'$'}TRUE_CFG" ] && TRUE_CFG=mtp,adb
-        [ "${'$'}(getprop sys.usb.state)" = "mtp" ] && "${'$'}RP" -n sys.usb.state "${'$'}TRUE_CFG"
-        exit 0
-        """.trimIndent()
-    ).isSuccess
+        [ -z "${'$'}RP" ] && RP=${'$'}(command -v resetprop 2>/dev/null)
+        [ -n "${'$'}RP" ] || exit 1
+    """.trimIndent()
+
+    /** Stop the service.1 shell loop, matching its complete script argument. */
+    private val stopLegacy = """
+        ps -A -o PID,ARGS | while read pid arg1 arg2 rest; do
+            case "${'$'}arg1" in
+                sh|/system/bin/sh|/system/bin/ash|bash|/system/bin/bash)
+                    [ "${'$'}arg2" = "$BOOT_SCRIPT" ] && kill -TERM "${'$'}pid" 2>/dev/null
+                    ;;
+                $BOOT_SCRIPT) kill -TERM "${'$'}pid" 2>/dev/null ;;
+            esac
+        done
+        :
+    """.trimIndent()
+
+    /** Enabled flags and a non-blocking native lock replace script deletion. */
+    @Synchronized
+    fun setPropMask(context: Context, enabled: Boolean): Boolean {
+        if (!available()) return false
+        val prepared = exec("""
+            if [ -f $BOOT_SCRIPT ] && ! grep -q '$SCRIPT_VERSION' $BOOT_SCRIPT; then echo legacy; fi
+            mkdir -p $BASE /data/adb/service.d
+            chmod 0700 $BASE
+            printf '0\n' > $BASE/enabled
+            ${stopLegacy.prependIndent("            ").trimStart()}
+        """.trimIndent())
+        if (!prepared.isSuccess) return false
+        val legacy = prepared.out.any { it.trim() == "legacy" }
+        val stopped = exec("""
+            ${locateResetprop.prependIndent("            ").trimStart()}
+            if [ -x $BINARY ]; then
+                n=0
+                until $BINARY restore "${'$'}RP"; do
+                    n=${'$'}((n + 1))
+                    [ "${'$'}n" -lt 6 ] || exit 1
+                    sleep 1
+                done
+            fi
+        """.trimIndent()).isSuccess
+        if (!stopped) return false
+        // Copy only after the running property helper has released its lock.
+        val binary = File(context.filesDir, "property-helper-v2")
+        context.assets.open("arm64-v8a/property-helper").use { input ->
+            binary.outputStream().use { output -> input.copyTo(output) }
+        }
+        val written = exec("""
+            umask 077
+            cp ${quote(binary.absolutePath)} $BINARY || exit 1
+            chmod 0700 $BINARY || exit 1
+            cat > $BOOT_SCRIPT <<'DUCKUSB_PROP_BOOT'
+            #!/system/bin/sh
+            # $SCRIPT_VERSION
+            [ "${'$'}(cat $BASE/enabled 2>/dev/null)" = "1" ] || exit 0
+            (
+                until [ "${'$'}(getprop sys.boot_completed)" = "1" ]; do sleep 1; done
+                sleep 30
+                [ "${'$'}(cat $BASE/enabled 2>/dev/null)" = "1" ] || exit 0
+                ${locateResetprop.prependIndent("            ").trimStart()}
+                nohup $BINARY watch "${'$'}RP" >> $BASE/service.log 2>&1 < /dev/null &
+            ) < /dev/null > /dev/null 2>&1 &
+            DUCKUSB_PROP_BOOT
+            chmod 0755 $BOOT_SCRIPT
+            cat > $BASE/restore.sh <<'DUCKUSB_PROP_RESTORE'
+            #!/system/bin/sh
+            printf '0\n' > $BASE/enabled
+            ${locateResetprop.prependIndent("            ").trimStart()}
+            n=0
+            until $BINARY restore "${'$'}RP"; do
+                n=${'$'}((n + 1))
+                [ "${'$'}n" -lt 6 ] || exit 1
+                sleep 1
+            done
+            DUCKUSB_PROP_RESTORE
+            chmod 0700 $BASE/restore.sh
+        """.trimIndent()).isSuccess
+        if (!written) return false
+        if (!enabled) return if (legacy) exec("$locateResetprop\n$BINARY restore-legacy \"\$RP\"").isSuccess else true
+        if (!exec("""
+            ${locateResetprop.prependIndent("            ").trimStart()}
+            printf 'STARTING\n' > $BASE/status
+            printf '1\n' > $BASE/enabled
+            nohup $BINARY watch "${'$'}RP" >> $BASE/service.log 2>&1 < /dev/null &
+        """.trimIndent()).isSuccess) return false
+        repeat(14) {
+            Thread.sleep(250)
+            val status = propStatus()
+            if (status.startsWith("ACTIVE") || status.startsWith("WAITING")) return true
+            if (status.contains("FAILED")) {
+                exec("printf '0\\n' > $BASE/enabled")
+                return false
+            }
+        }
+        return false
+    }
 
     private fun exec(vararg commands: String): Shell.Result = try {
         Shell.cmd(*commands).exec()

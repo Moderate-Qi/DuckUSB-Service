@@ -40,6 +40,8 @@ class MainActivity : AppCompatActivity() {
     private var rootProps: Map<String, String> = emptyMap()
     private var rootAvailable = false
     private var propMaskInstalled = false
+    private var socketServiceStatus = "未运行"
+    private var propertyServiceStatus = "尚待启用"
     private var updateLabel: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -95,7 +97,10 @@ class MainActivity : AppCompatActivity() {
             val truth = DuckServiceClient.get(this)?.let {
                 runCatching { it.getTrueSettings(SETTING_KEYS.toTypedArray()) }.getOrNull()
             }
+            RootTools.upgradePropMask(this)
+            val propertyStatus = RootTools.propStatus()
             val snapshot = RootTools.snapshot(SETTING_KEYS, PROP_KEYS)
+            val sockets = ServiceSocketTools.status()
             runOnUiThread {
                 serviceSettings = truth?.let { bundle ->
                     SETTING_KEYS.mapNotNull { key ->
@@ -108,6 +113,8 @@ class MainActivity : AppCompatActivity() {
                 rootSettings = snapshot.settings
                 rootProps = snapshot.props
                 propMaskInstalled = snapshot.propMaskInstalled
+                socketServiceStatus = sockets
+                propertyServiceStatus = propertyStatus
                 render()
             }
         }
@@ -180,7 +187,7 @@ class MainActivity : AppCompatActivity() {
         }
         val detail = when {
             !frameworkLive() -> "Enable DuckUSB in LSPosed, tick System Framework in its scope, then reboot."
-            paused -> "Everything reads true again. The hook stays loaded until you unpause."
+            paused -> "Settings 隐藏已暂停。服务侧 Socket 与 USB 属性隐藏由 Behaviour 页面各自的开关控制。"
             !flag(Config.KEY_SPOOF, true) -> "The hook is live but the settings spoof is switched off."
             else -> "Hook live in system_server, covering every app"
         }
@@ -194,6 +201,7 @@ class MainActivity : AppCompatActivity() {
         val card = ui.outlinedCard()
         val col = ui.column(10, 10)
         col.addView(ui.infoRow("Module version", appVersion()))
+        col.addView(ui.infoRow("Build", "strawing · local service integration"))
         col.addView(ui.infoRow("Hook engine", frameworkName() ?: "Xposed"))
         col.addView(ui.infoRow("System Framework scoped", when (systemScoped()) {
             true -> "yes"
@@ -231,23 +239,21 @@ class MainActivity : AppCompatActivity() {
         col.addView(ui.thinDivider())
         col.addView(ui.toggleRow(
             DuckUi.Icons.tag, "Mask the USB config property",
-            "persist.sys.usb.config and sys.usb.state read mtp and init.svc.adbd reads stopped, in the property area itself so every read route agrees. sys.usb.config is left alone, so adbd keeps running. Reverts on reboot. Needs root.",
+            "统一处理 USB 可读属性；匹配高通 Gadget HAL 路径时补全 sys.usb.config。保留厂商控制值、ADB 服务与文件传输。开关支持即时恢复与开机续用。状态：$propertyServiceStatus",
             propMaskInstalled,
         ) { wanted ->
             propMaskInstalled = wanted
             setFlag(Config.KEY_MASK_USB_PROP, wanted)
             renderContent()
             background {
-                val ok = if (wanted) RootTools.setPropMask(true) else {
-                    RootTools.setPropMask(false)
-                    RootTools.restoreProp()
-                }
+                val ok = RootTools.setPropMask(this, wanted)
                 runOnUiThread {
                     if (!ok) {
                         propMaskInstalled = !wanted
+                        setFlag(Config.KEY_MASK_USB_PROP, !wanted)
                         Toast.makeText(
                             this@MainActivity,
-                            "Needs root — grant DuckUSB superuser access, then try again.",
+                            "属性服务操作失败，请查看 Diagnostics 或 root 授权。",
                             Toast.LENGTH_LONG,
                         ).show()
                     }
@@ -261,6 +267,23 @@ class MainActivity : AppCompatActivity() {
             "One logcat line per spoofed read. Off unless you are investigating.",
             flag(Config.KEY_VERBOSE_LOG, false),
         ) { setFlag(Config.KEY_VERBOSE_LOG, it) })
+        col.addView(ui.thinDivider())
+        col.addView(ui.toggleRow(
+            DuckUi.Icons.usb, "服务侧 Socket 隐藏",
+            "停止应用断点调试监听，并在 system_server 重定向授权连接。保留 push/pull、shell 与日志。只需系统框架作用域。状态：$socketServiceStatus",
+            flag(Config.KEY_SERVICE_SOCKETS, false),
+        ) { wanted ->
+            background {
+                val result = runCatching {
+                    if (wanted) ServiceSocketTools.enable(this) else ServiceSocketTools.disable(prefs)
+                }
+                runOnUiThread {
+                    Toast.makeText(this, result.getOrElse { it.message ?: "服务操作失败" }, Toast.LENGTH_LONG).show()
+                    reload()
+                }
+            }
+        })
+        col.addView(ui.noteRow("关闭或更换 LSPosed 模块前，先关闭上面的服务侧开关，等待 STOPPED。安装后首次启用需重启一次。"))
         col.addView(ui.thinDivider())
         col.addView(updateRow())
         card.addView(col)
@@ -295,9 +318,9 @@ class MainActivity : AppCompatActivity() {
         val card = ui.outlinedCard()
         val col = ui.column(16, 16)
         col.addView(ui.bodyText(
-            "Every app on the device reads USB debugging as off. The lie is told once in " +
-                "system_server, so nothing is injected into the apps being fooled and there is " +
-                "no scope list to maintain."
+            "仅勾选 LSPosed 的系统框架。普通应用进程不加载本模块，不修改其 stat/connect。" +
+                "Settings 由 system_server 统一处理；root helper 在 adbd 服务侧停止 JDWP 监听并移动授权 socket，" +
+                "system_server 保留授权连接。可关闭服务侧开关恢复。应用断点调试在开启期间不可用。"
         ))
         if (systemScoped() == false) {
             col.addView(ui.noteRow(
@@ -323,6 +346,9 @@ class MainActivity : AppCompatActivity() {
             return card
         }
         col.addView(ui.statRow("service version", state.getInt("version").toString()))
+        col.addView(ui.statRow("auth redirect ready", state.getBoolean("authRedirectReady").toString()))
+        col.addView(ui.statRow("socket helper", socketServiceStatus))
+        col.addView(ui.statRow("property helper", propertyServiceStatus))
         col.addView(ui.statRow("provider hooks", state.getInt("hookCount").toString()))
         col.addView(ui.statRow("armed", "${state.getLong("installedAtRealtimeMs") / 1000}s into this boot"))
         col.addView(ui.statRow("apps spoofed", svcRecords.size.toString()))

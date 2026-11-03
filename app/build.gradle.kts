@@ -27,11 +27,11 @@ android {
 
 
     defaultConfig {
-        applicationId = "com.strawing.duckusb"
+        applicationId = "com.strawing.duckusb.servicehide"
         minSdk = 26
         targetSdk = 35
-        versionCode = 31
-        versionName = "2.1.8"
+        versionCode = 33
+        versionName = "2.1.7-service.2"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -55,6 +55,8 @@ android {
             )
             if (hasSigning) {
                 signingConfig = signingConfigs.getByName("release")
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
             }
         }
     }

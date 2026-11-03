@@ -2,7 +2,9 @@ package com.strawing.duckusb
 
 /** Shared constants for the hook and the UI. Both live toggles default ON. */
 object Config {
-    const val PKG = "com.strawing.duckusb"
+    const val PKG = "com.strawing.duckusb.servicehide"
+    const val KEY_SERVICE_SOCKETS = "service_sockets_enabled"
+    const val KEY_AUTH_ENDPOINT = "service_auth_endpoint"
     const val PREFS_NAME = "duck_usb_prefs"
 
     /**

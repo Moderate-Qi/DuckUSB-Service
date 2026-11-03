@@ -1,0 +1,9 @@
+{
+  "project": "DuckUSB-Service",
+  "url": "https://github.com/Bouteillepleine/DuckUSB",
+  "base_commit": "bf31eb6db00f1dee92f3e51202fa9bc4e75765e4",
+  "local_version": "2.1.7-service.2",
+  "release_asset": "DuckUSB-Service-2.1.7-service.2-arm64.apk",
+  "maintainer": "Moderate-Qi",
+  "prepared": "2026-11-03"
+}

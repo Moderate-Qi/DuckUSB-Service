@@ -22,4 +22,4 @@ dependencyResolutionManagement {
 rootProject.name = "DuckUSB"
 
 include(":app", ":ui")
-include(":common", ":zygisk:zygote", ":zygisk:app", ":zygisk:probe")
+include(":common")

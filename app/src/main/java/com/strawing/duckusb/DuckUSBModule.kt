@@ -133,6 +133,7 @@ class DuckUSBModule : XposedModule() {
      */
     override fun onSystemServerStarting(param: SystemServerStartingParam) {
         val cl = param.classLoader
+        installAuthSocketRedirect(cl)
         // Installation follows the toggle: hooks are placed only for the feature that asked
         // for them, so "framework mode only" does not also leave two hooks on
         // NotificationManagerService.
@@ -144,6 +145,30 @@ class DuckUSBModule : XposedModule() {
         //     EVERY app — no per-app scope. Gated per-caller by UID so shell/system still see
         //     the truth.
         installFrameworkSettingsSpoof(cl)
+    }
+
+    /** Sole new hook, inside system_server. App-side socket/stat/connect stay original. */
+    private fun installAuthSocketRedirect(cl: ClassLoader) {
+        val socket = findClass("android.net.LocalSocket", cl) ?: return
+        val addressClass = android.net.LocalSocketAddress::class.java
+        for (method in socket.declaredMethods) {
+            if (method.name != "connect" || method.parameterTypes.firstOrNull() != addressClass) continue
+            try {
+                hook(method).intercept { chain ->
+                    val address = chain.args.firstOrNull() as? android.net.LocalSocketAddress
+                    val endpoint = prefs.getString(Config.KEY_AUTH_ENDPOINT, null)
+                    if (prefs.getBoolean(Config.KEY_SERVICE_SOCKETS, false) &&
+                        address?.name == "adbd" && address.namespace == android.net.LocalSocketAddress.Namespace.RESERVED &&
+                        endpoint != null && endpoint.startsWith("/dev/socket/.dusb-") &&
+                        !java.io.File("/dev/socket/adbd").exists() && java.io.File(endpoint).exists()) {
+                        val args = chain.args.toTypedArray()
+                        args[0] = android.net.LocalSocketAddress(endpoint, android.net.LocalSocketAddress.Namespace.FILESYSTEM)
+                        chain.proceed(args)
+                    } else chain.proceed()
+                }
+                ServiceAuthState.installed = true
+            } catch (error: Throwable) { logE("auth socket redirect unavailable", error) }
+        }
     }
 
     /**
